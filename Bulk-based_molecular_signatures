@@ -1,0 +1,64 @@
+
+#############################################################################
+###Bulk-based molecular signature score
+#Molecular Signature score for each gene-set in each individual sample
+
+getwd()
+data <- read.table("./bulk/GSE109887.txt",header = TRUE)
+data <- read.table("./bulk_2/GSE28146.txt",header = TRUE)
+
+data_1 <- data[,-1]
+rownames(data_1)<-data[,1]
+length(data[,1])
+data_1<-log(data_1,2)
+
+gene_sets <- read.table("./bulk/Sig_genes_in_AD_Positive_cells.txt",header = TRUE)
+
+#gene_sets <- read.table("./bulk/Sig_genes_in_AD_Positive_cells_overlaped_GWAS.txt",header = TRUE)
+
+#gene_sets <- read.table("./bulk_2/Sig_genes_in_AD_Positive_cells_overlaped_GWAS_2.txt",header = TRUE)
+
+
+len<-length(colnames(data_1))
+
+all_samples_signature_score <- c()
+
+for (j in 1:len){
+  
+  #0. extracting a sample for each round  
+  sample_data <- as.data.frame(data_1[,j])
+  rownames(sample_data) <-rownames(data_1)
+  
+  #1. raw_score for each sample  
+  value <- sample_data[which(rownames(sample_data) %in% gene_sets[,1]),1]
+  raw_score <- mean(value)
+  
+  #2. control score for each sample (1000 times of random selections)
+  sample_control <- sample_data[-(which(rownames(sample_data) %in% gene_sets[,1])),1]
+  control_all_value <- c()
+  for (i in 1:1000){
+    set.seed(i)
+    control_value <- sample(sample_control,length(value))
+    
+    control_all_value <- c(control_all_value,control_value)
+  }
+  
+  control_score <- mean(control_all_value)
+  
+  #3. signature score for each sample
+  signature_score <- (raw_score - control_score)
+  
+  #4. collecting all samples signature score  
+  all_samples_signature_score <- c(all_samples_signature_score, signature_score)
+  
+}
+
+all_samples_signature_score <- as.data.frame(all_samples_signature_score)
+rownames(all_samples_signature_score)<-colnames(data_1)
+
+all_samples_signature_score
+
+write.csv(all_samples_signature_score,"all_samples_signature_score.csv")
+write.csv(all_samples_signature_score,"./bulk/all_samples_signature_score_for_genes_in_positive_cells.csv")
+
+
